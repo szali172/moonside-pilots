@@ -5,12 +5,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Document</title>
+    <title>archives</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}" />
 </head>
 <body>
+    <div class="container-fluid my-2 py-2">
+        <ul class="nav">
+            <li class="nav-item">
+                <a href="/" class="nav-link">back up</a>
+            </li>
+        </ul>
+    </div>
     <div class="container">
-        <h1>Image Gallery Updated</h1>
+        <h1>Pics</h1>
         <div id="gallery"></div>
     </div>
     <div id="popup">

@@ -22,3 +22,14 @@ def GET_gallery():
 @app.route('/images/image-<x>.jpg', methods=['GET'])
 def GET_image(x):
     return send_file(f'images/image-{x}.jpg')
+
+@app.route('/space.mp4', methods=['GET'])
+def GET_video():
+    return send_file(f'templates/space.mp4')
+  
+  
+# TODO: fix video loop
+# TODO: add button for archives page on index.html
+# TODO: move images and videos to a permanent mongodb cluster
+# TODO: Make endpoints to retrieve videos and pictures from mongo
+# TODO: 
