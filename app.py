@@ -7,6 +7,7 @@ import os, io, requests, sys
 
 import config as c
 import hash
+import heif
 
 app = Flask(__name__)
 
@@ -50,7 +51,7 @@ def GET_video():
 
 # Routes to retrieve, insert or delete a specified file
 @app.route('/<db>/<coll>/<filename>', methods=['PUT', 'GET', 'DELETE'])
-def PUT_GET_DEL_image(db, coll, filename):
+def single_file(db, coll, filename):
     
     # Check to see if db and collection exist
     try:
@@ -92,7 +93,6 @@ def PUT_GET_DEL_image(db, coll, filename):
             return f'Could not find {filename}\n', 400    
            
         return send_file(f'{db}/{coll}/{filename}'), 200
-        # return f'{filename} found\n', 200
     
     
     # Route to delete a file from the specific db and collection
@@ -109,8 +109,9 @@ def PUT_GET_DEL_image(db, coll, filename):
         
 # Route to retrieve or delete all files in a specific collection
 # 'CLEAR' endpoint deletes all local files in the specified db/coll directory
-@app.route('/<db>/<coll>', methods=['GET', 'DELETE', 'CLEAR'])
-def GET_DEL_CLEAR_images(db, coll):
+# 'PUT' endpoint adds an entire local folder to the collection
+@app.route('/<db>/<coll>', methods=['GET', 'DELETE', 'CLEAR', 'PUT'])
+def multiple_files(db, coll):
     
     # Check to see if db and collection exist
     try:
@@ -158,10 +159,54 @@ def GET_DEL_CLEAR_images(db, coll):
             return f'Cleared {db}/{coll} directory\n', 200
         
         except:
-            return f'Could not clear {db}/{coll} directory\n', 400   
-
-
+            return f'Could not clear {db}/{coll} directory\n', 400
         
+        
+    if request.method == 'PUT':
+        
+        dir = f'local/{db}/{coll}'
+        output_msg = ""
+        file_count = 0
+        
+        for filename in os.listdir(dir):
+            
+            # Current file is in HEIC format, convert to JPEG
+            if '.heif' in filename:
+                new_filename = heif.heic_to_jpg(filename, dir)
+            else:
+                new_filename = filename
+                
+            file_path = os.path.join(dir, new_filename)
+
+            try:
+                # check if filename already exists
+                # if it does, add it to a list of filenames that need to be renamed
+                cursor = collection.find_one({'filename': new_filename})
+                if cursor:
+                    output_msg = output_msg + f'The name \'{new_filename}\' already exists in the collection\n'
+                    continue
+                    
+                im = Image.open(file_path)
+                image_bytes = io.BytesIO()
+                im.save(image_bytes, format='JPEG')
+                
+                image_b = {'data': image_bytes.getvalue()}
+                collection.insert_one({'filename': str(new_filename), 'image': image_b, 'UTC': datetime.now()})
+                file_count += 1
+            except:
+                output_msg = output_msg + f'\'{new_filename}\' could not be added\n'
+                
+        if file_count == 0 and len(output_msg) == 0:
+            return 'Local directory may be empty!', 400
+        
+        elif len(output_msg) == 0: 
+            return f'Successfully added all {file_count} files', 200
+        
+        else:
+            return f'Successfully added {file_count} files\nBut there were errors with the following files:\n{output_msg}', 200
+
+
+
         
 
 # TODO: fix video loop
