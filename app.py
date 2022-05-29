@@ -1,3 +1,4 @@
+from bson import _name_value_to_bson
 from flask import Flask, render_template, request, jsonify, send_file
 from datetime import datetime
 from PIL import Image
@@ -7,7 +8,7 @@ import os, io, requests, sys
 
 import config as c
 import hash
-import heif
+from image import get_byte_array, name_to_jpg
 
 app = Flask(__name__)
 
@@ -62,21 +63,20 @@ def single_file(db, coll, filename):
     
         
     # Route to add a file into the specified db
-    if request.method == 'PUT':
+    if request.method == 'PUT': 
+
+        fname_as_jpg = name_to_jpg(filename)
         
         try:
-            # check if filename already exists
-            cursor = collection.find_one({'filename': filename})
+            # Check if filename (as .jpg) already exists
+            cursor = collection.find_one({'filename': fname_as_jpg})
             if cursor:
                 return f'File could not be added. Please rename {filename}\n', 400
                 
-            im = Image.open(f'./{filename}')
-            image_bytes = io.BytesIO()
-            im.save(image_bytes, format='JPEG')
+            image_b = get_byte_array()
             
-            image_b = {'data': image_bytes.getvalue()}
-            collection.insert_one({'filename': str(filename), 'image': image_b, 'UTC': datetime.now()}) 
-            return 'Success', 200
+            collection.insert_one({'filename': str(fname_as_jpg), 'image': image_b, 'UTC': datetime.now()}) 
+            return f'Successfully added {fname_as_jpg} to collection \'{coll}\' in database \'{db}\'', 200
         except:
             return f'{filename} could not be added\n', 400
         
@@ -170,31 +170,19 @@ def multiple_files(db, coll):
         
         for filename in os.listdir(dir):
             
-            # Current file is in HEIC format, convert to JPEG
-            if '.heif' in filename:
-                new_filename = heif.heic_to_jpg(filename, dir)
-            else:
-                new_filename = filename
-                
-            file_path = os.path.join(dir, new_filename)
+                fname_as_jpg = name_to_jpg(filename)
 
-            try:
                 # check if filename already exists
                 # if it does, add it to a list of filenames that need to be renamed
-                cursor = collection.find_one({'filename': new_filename})
+                cursor = collection.find_one({'filename': fname_as_jpg})
                 if cursor:
-                    output_msg = output_msg + f'The name \'{new_filename}\' already exists in the collection\n'
+                    output_msg = output_msg + f'The name \'{fname_as_jpg}\' already exists in the collection\n'
                     continue
-                    
-                im = Image.open(file_path)
-                image_bytes = io.BytesIO()
-                im.save(image_bytes, format='JPEG')
                 
-                image_b = {'data': image_bytes.getvalue()}
-                collection.insert_one({'filename': str(new_filename), 'image': image_b, 'UTC': datetime.now()})
+                image_b = get_byte_array(filename, dir)
+                
+                collection.insert_one({'filename': str(fname_as_jpg), 'image': image_b, 'UTC': datetime.now()})
                 file_count += 1
-            except:
-                output_msg = output_msg + f'\'{new_filename}\' could not be added\n'
                 
         if file_count == 0 and len(output_msg) == 0:
             return 'Local directory may be empty!', 400
@@ -207,8 +195,10 @@ def multiple_files(db, coll):
 
 
 
-        
+
+
 
 # TODO: fix video loop
 # TODO: fix delete_one endpoint
-# TODO: connect js with app.py
+# TODO: Create loading circle animation in archives
+# TODO: Pick a few images for static initial load of each archive page

@@ -1,4 +1,10 @@
-import { getFilenames } from "./filenames.js";
+// import { getFilenames } from "./filenames.js";
+
+// Loading animation when fetching data
+window.addEventListener("load", function () {
+    const loader = document.querySelector(".loader");
+    loader.className += " hidden"; // class "loader hidden"
+});
 
 const gallery = document.getElementById('gallery');
 const popup = document.getElementById('popup');
